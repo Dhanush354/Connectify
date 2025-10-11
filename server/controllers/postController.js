@@ -82,7 +82,7 @@ export const likePost = async(req,res)=>{
         }
         else{
             post.likes_count.push(userId);
-            await Post.save();
+            await post.save();
             res.json({success:true, message:'post liked'});
         }
 

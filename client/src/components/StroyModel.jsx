@@ -1,6 +1,8 @@
 import { ArrowLeft, Sparkle, TextIcon, Upload } from "lucide-react";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { useAuth } from "@clerk/clerk-react";
+import api from "../api/axios";
 
 const StoryModel=({setShowModel,fetchStories})=>{
     const bgcolors=["#4f46e5","#7c3aed","#db277","#e11d48","#ca8a04","#0d9488"]
@@ -11,16 +13,74 @@ const StoryModel=({setShowModel,fetchStories})=>{
     const [media,setMedia]=useState(null);
     const [previewUrl,setPreviewUrl]=useState(null);
 
+    const {getToken}=useAuth();
+
+    const MAX_VIDEO_DURATION=60; //seconds
+    const MAX_VIDEO_SIZE=50; //MB
+
     const handleMediaUpload=(e)=>{
         const file=e.target.files?.[0];
         if(file){
-            setMedia(file);
-            setPreviewUrl(URL.createObjectURL(file));
+            if(file.type.startsWith('video')){
+                if(file.size > MAX_VIDEO_SIZE * 1024 * 1024){
+                    toast.error(`Video size should be less than ${MAX_VIDEO_SIZE}MB`);
+                    setMedia(null);
+                    setPreviewUrl(null);
+                    return;
+                }
+                const video=document.createElement('video');
+                video.preload='metadata';
+                video.onloadedmetadata=()=>{
+                    window.URL.revokeObjectURL(video.src);
+                    if(video.duration > MAX_VIDEO_DURATION){
+                        toast.error(`Video duration should be less than ${MAX_VIDEO_DURATION} seconds`);
+                        setMedia(null);
+                        setPreviewUrl(null);
+                    }else{
+                        setMedia(file);
+                        setPreviewUrl(URL.createObjectURL(file));
+                        setText('');
+                        setMode('media');
+                    }
+                }     
+                video.src=URL.createObjectURL(file); 
+            }else if(file.type.startsWith('image')){
+                setMedia(file);
+                setPreviewUrl(URL.createObjectURL(file));
+                setText('');
+                setMode('media');
+            }
         }
     }
 
     const handleCreateStory= async()=>{
+        const media_type=mode==='media' ? media?.type.startsWith('image') ? 'image' : 'video' : 'text';
 
+        if(media_type==='text' && !text){
+            throw new Error('Please enter some text');
+        }
+        let formData=new FormData();
+        formData.append('media_type',media_type);
+        formData.append('background_color',background);
+        formData.append('content',text);
+        formData.append('media',media);
+
+
+        const token= await getToken();
+        try {
+            const {data}=await api.post('/api/story/create',formData,{
+                headers:{ Authorization: `Bearer ${token}`},
+            });
+            if(data.success){
+                toast.success("Stroy created successfully");
+                setShowModel(false);
+                fetchStories();
+            }else{
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
     }
 
     return(
@@ -74,7 +134,7 @@ const StoryModel=({setShowModel,fetchStories})=>{
                     </button>
                     <label className={`flex-1 flex items-center justify-center gap-2 p-2 rounded cursor-pointer
                         ${mode==='media' ? 'bg-white text-black' : 'bg-zinc-800'}`}>
-                        <input onChange={(e)=>{handleMediaUpload(e); setMode('media');}} type="file" accept="image/*,video/*" className="hidden" />
+                        <input onChange={handleMediaUpload} type="file" accept="image/*,video/*" className="hidden" />
                         <Upload size={18}/>Photo/Video
                     </label>
                 </div>
@@ -82,8 +142,6 @@ const StoryModel=({setShowModel,fetchStories})=>{
                 hover:from-indigo-600 hover:to-purple-700 active:scale-95 transition cursor-pointer font-semibold"
                 onClick={()=>toast.promise(handleCreateStory(),{
                     loading:'Saving...',
-                    success:<p>Story Added</p>,
-                    error:e=> <p>{e.message}</p>
                 })}>
                     <Sparkle size={18}/>Create Story
                 </button>
