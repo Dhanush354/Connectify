@@ -9,13 +9,14 @@ import userRouter from './routes/userRoute.js';
 import postRouter from './routes/postRoute.js';
 import storyRouter from './routes/storyRoute.js';
 import messageRouter from './routes/messageRoute.js';
+import callRouter from './routes/callRoutes.js';
 
 const app=express();
 
 await connectDB();
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
 
 app.use(clerkMiddleware());
 
@@ -25,6 +26,7 @@ app.use('/api/user', userRouter)
 app.use('/api/post', postRouter)
 app.use('/api/story', storyRouter)
 app.use('/api/message', messageRouter)
+app.use('/api', callRouter)
 
 
 const PORT= process.env.PORT || 4000;

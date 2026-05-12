@@ -154,7 +154,7 @@ const sendNotificationOfUnseenMessages=inngest.createFunction(
                 <p>You have ${unseenCount[userId]} unseen messages</p>
                 <p>Click <a href="${process.env.FRONTEND_URL}/messages" style="color: #10b981;">here</a> to view them</p>
                 <br/>
-                <p>Thanks,<br/>PingUp - Stay Connected</p>
+                <p>Thanks,<br/>Connectify - Stay Connected</p>
             </div>
             `;
             await sendEmail({
