@@ -5,22 +5,12 @@ const ICE_SERVERS = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:openrelay.metered.ca:80" },
-    {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443?transport=tcp",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    // freestun.net — free public TURN, no registration required
+    { urls: "turn:freestun.net:3478", username: "free", credential: "free" },
+    { urls: "turn:freestun.net:3479", username: "free", credential: "free" },
+    { urls: "turns:freestun.net:5349", username: "free", credential: "free" },
   ],
 };
 
@@ -95,8 +85,10 @@ const VideoCall = ({ roomId, callType, isCaller, onClose }) => {
 
       if (isCaller) {
         const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
+        // Post offer to DB before setLocalDescription so ICE candidates posted
+        // via onicecandidate can never race with the offer POST that resets candidates:[].
         await axios.post(`/api/call/${roomId}/offer`, { offer, callType });
+        await pc.setLocalDescription(offer);
         setStatus("Waiting for answer...");
 
         intervalRef.current = setInterval(async () => {
